@@ -19,6 +19,7 @@ package com.google.zetasql.toolkit.antipattern.parser;
 import com.google.zetasql.AnalyzerOptions;
 import com.google.zetasql.LanguageOptions;
 import com.google.zetasql.Parser;
+import com.google.zetasql.ZetaSQLOptions;
 import com.google.zetasql.parser.ASTNodes.ASTStatement;
 import com.google.zetasql.toolkit.ZetaSQLToolkitAnalyzer;
 import com.google.zetasql.toolkit.antipattern.analyzer.IdentifyJoinOrder;
@@ -86,6 +87,7 @@ public class Main {
           countAntiPatterns += 1;
         }
       } catch (Exception e) {
+        // logger.error("Query parsing failed for query: " + query, e);
         countErrors += 1;
       }
       countQueries += 1;
@@ -113,6 +115,8 @@ public class Main {
     LanguageOptions languageOptions = new LanguageOptions();
     languageOptions.enableMaximumLanguageFeatures();
     languageOptions.setSupportsAllStatementKinds();
+    languageOptions.enableReservableKeyword("QUALIFY");
+//  languageOptions.enableReservableKeyword("UNNEST");
     return languageOptions;
   }
 
