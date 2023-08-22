@@ -26,6 +26,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.cli.*;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +41,9 @@ public class BQAntiPatternCMDParser {
   public static final String OUTPUT_FILE_OPTION_NAME = "output_file_path";
   public static final String READ_FROM_INFO_SCHEMA_FLAG_NAME = "read_from_info_schema";
   public static final String READ_FROM_INFO_SCHEMA_DAYS_OPTION_NAME = "read_from_info_schema_days";
+  public static final String READ_FROM_INFO_SCHEMA_START_TIME_OPTION_NAME = "read_from_info_schema_start_time";
+  public static final String READ_FROM_INFO_SCHEMA_END_TIME_OPTION_NAME = "read_from_info_schema_end_time";
+  public static final String READ_FROM_INFO_SCHEMA_TIMEOUT_IN_SECS_OPTION_NAME = "read_from_info_schema_timeout_in_secs";
   public static final String READ_FROM_INFO_SCHEMA_TABLE_OPTION_NAME = "info_schema_table_name";
   public static final String PROCESSING_PROJECT_ID_OPTION_NAME = "processing_project_id";
   public static final String OUTPUT_TABLE_OPTION_NAME = "output_table";
@@ -169,6 +173,33 @@ public class BQAntiPatternCMDParser {
             .build();
     options.addOption(infoSchemaDays);
 
+    Option infoSchemaStartTime =
+            Option.builder(READ_FROM_INFO_SCHEMA_START_TIME_OPTION_NAME)
+                    .argName(READ_FROM_INFO_SCHEMA_START_TIME_OPTION_NAME)
+                    .hasArg()
+                    .required(false)
+                    .desc("Specifies start timestamp INFORMATION SCHEMA be queried for")
+                    .build();
+    options.addOption(infoSchemaStartTime);
+
+    Option infoSchemaEndTime =
+            Option.builder(READ_FROM_INFO_SCHEMA_END_TIME_OPTION_NAME)
+                    .argName(READ_FROM_INFO_SCHEMA_END_TIME_OPTION_NAME)
+                    .hasArg()
+                    .required(false)
+                    .desc("Specifies end timestamp INFORMATION SCHEMA be queried for")
+                    .build();
+    options.addOption(infoSchemaEndTime);
+
+    Option infoSchemaTimeoutSecs =
+            Option.builder(READ_FROM_INFO_SCHEMA_TIMEOUT_IN_SECS_OPTION_NAME)
+                    .argName(READ_FROM_INFO_SCHEMA_TIMEOUT_IN_SECS_OPTION_NAME)
+                    .hasArg()
+                    .required(false)
+                    .desc("Specifies timeout (in secs) to query INFORMATION SCHEMA")
+                    .build();
+    options.addOption(infoSchemaTimeoutSecs);
+
     Option infoSchemaTable =
         Option.builder(READ_FROM_INFO_SCHEMA_TABLE_OPTION_NAME)
             .argName(READ_FROM_INFO_SCHEMA_TABLE_OPTION_NAME)
@@ -220,19 +251,46 @@ public class BQAntiPatternCMDParser {
 
   private Iterator<InputQuery> readFromIS() throws InterruptedException {
     logger.info("Using INFORMATION_SCHEMA as input source");
-    if (cmd.hasOption(READ_FROM_INFO_SCHEMA_DAYS_OPTION_NAME)
-        && cmd.hasOption(READ_FROM_INFO_SCHEMA_TABLE_OPTION_NAME)) {
-      return new InformationSchemaQueryIterable(
-          cmd.getOptionValue(PROCESSING_PROJECT_ID_OPTION_NAME),
-          cmd.getOptionValue(READ_FROM_INFO_SCHEMA_DAYS_OPTION_NAME),
-          cmd.getOptionValue(READ_FROM_INFO_SCHEMA_TABLE_OPTION_NAME));
-    } else if (cmd.hasOption(READ_FROM_INFO_SCHEMA_FLAG_NAME)) {
-      return new InformationSchemaQueryIterable(
-          cmd.getOptionValue(PROCESSING_PROJECT_ID_OPTION_NAME),
-          cmd.getOptionValue(READ_FROM_INFO_SCHEMA_DAYS_OPTION_NAME));
+
+    Long timeoutInSecs = Optional.ofNullable(cmd.getOptionValue(READ_FROM_INFO_SCHEMA_TIMEOUT_IN_SECS_OPTION_NAME))
+            .filter(x -> NumberUtils.isParsable(x))
+            .map(x -> Long.parseLong(x))
+            .orElse(10L);
+
+    if (cmd.hasOption(READ_FROM_INFO_SCHEMA_DAYS_OPTION_NAME)) {
+      if (cmd.hasOption(READ_FROM_INFO_SCHEMA_TABLE_OPTION_NAME)) {
+        return new InformationSchemaQueryIterable(
+                cmd.getOptionValue(PROCESSING_PROJECT_ID_OPTION_NAME),
+                timeoutInSecs,
+                cmd.getOptionValue(READ_FROM_INFO_SCHEMA_DAYS_OPTION_NAME),
+                cmd.getOptionValue(READ_FROM_INFO_SCHEMA_TABLE_OPTION_NAME));
+      } else {
+        return new InformationSchemaQueryIterable(
+                cmd.getOptionValue(PROCESSING_PROJECT_ID_OPTION_NAME),
+                timeoutInSecs,
+                cmd.getOptionValue(READ_FROM_INFO_SCHEMA_DAYS_OPTION_NAME));
+      }
+    } if (cmd.hasOption(READ_FROM_INFO_SCHEMA_START_TIME_OPTION_NAME)
+            && cmd.hasOption(READ_FROM_INFO_SCHEMA_END_TIME_OPTION_NAME)) {
+      if (cmd.hasOption(READ_FROM_INFO_SCHEMA_TABLE_OPTION_NAME)) {
+        return new InformationSchemaQueryIterable(
+                cmd.getOptionValue(PROCESSING_PROJECT_ID_OPTION_NAME),
+                timeoutInSecs,
+                cmd.getOptionValue(READ_FROM_INFO_SCHEMA_START_TIME_OPTION_NAME),
+                cmd.getOptionValue(READ_FROM_INFO_SCHEMA_END_TIME_OPTION_NAME),
+                cmd.getOptionValue(READ_FROM_INFO_SCHEMA_TABLE_OPTION_NAME));
+      } else {
+        return new InformationSchemaQueryIterable(
+                cmd.getOptionValue(PROCESSING_PROJECT_ID_OPTION_NAME),
+                timeoutInSecs,
+                cmd.getOptionValue(READ_FROM_INFO_SCHEMA_START_TIME_OPTION_NAME),
+                cmd.getOptionValue(READ_FROM_INFO_SCHEMA_END_TIME_OPTION_NAME),
+                null);
+      }
     } else {
       return new InformationSchemaQueryIterable(
-          cmd.getOptionValue(PROCESSING_PROJECT_ID_OPTION_NAME));
+          cmd.getOptionValue(PROCESSING_PROJECT_ID_OPTION_NAME),
+          timeoutInSecs);
     }
   }
 

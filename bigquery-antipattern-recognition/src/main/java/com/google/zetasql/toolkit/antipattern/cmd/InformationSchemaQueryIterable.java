@@ -20,6 +20,7 @@ import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
 import com.google.zetasql.toolkit.antipattern.util.BigQueryHelper;
 import java.util.Iterator;
+import java.util.Optional;
 
 public class InformationSchemaQueryIterable implements Iterator<InputQuery> {
 
@@ -27,21 +28,28 @@ public class InformationSchemaQueryIterable implements Iterator<InputQuery> {
   String IS_TABLE_DEFAULT = "`region-us`.INFORMATION_SCHEMA.JOBS";
   String DAYS_BACK_DEFAULT = "30";
 
-  public InformationSchemaQueryIterable(String projectId) throws InterruptedException {
+  public InformationSchemaQueryIterable(String projectId, Long timeoutInSecs) throws InterruptedException {
     TableResult tableResult =
-        BigQueryHelper.getQueriesFromIS(projectId, DAYS_BACK_DEFAULT, IS_TABLE_DEFAULT);
+        BigQueryHelper.getQueriesFromIS(projectId, timeoutInSecs, DAYS_BACK_DEFAULT, IS_TABLE_DEFAULT);
     fieldValueListIterator = tableResult.iterateAll().iterator();
   }
 
-  public InformationSchemaQueryIterable(String projectId, String daysBack)
+  public InformationSchemaQueryIterable(String projectId, Long timeoutInSecs, String daysBack)
       throws InterruptedException {
-    TableResult tableResult = BigQueryHelper.getQueriesFromIS(projectId, daysBack, IS_TABLE_DEFAULT);
+    TableResult tableResult = BigQueryHelper.getQueriesFromIS(projectId, timeoutInSecs, daysBack, IS_TABLE_DEFAULT);
     fieldValueListIterator = tableResult.iterateAll().iterator();
   }
 
-  public InformationSchemaQueryIterable(String projectId, String daysBack, String ISTable)
+  public InformationSchemaQueryIterable(String projectId, Long timeoutInSecs, String daysBack, String ISTable)
       throws InterruptedException {
-    TableResult tableResult = BigQueryHelper.getQueriesFromIS(projectId, daysBack, ISTable);
+    TableResult tableResult = BigQueryHelper.getQueriesFromIS(projectId, timeoutInSecs, daysBack, ISTable);
+    fieldValueListIterator = tableResult.iterateAll().iterator();
+  }
+
+  public InformationSchemaQueryIterable(String projectId, Long timeoutInSecs, String startTime, String endTime, String ISTable)
+      throws InterruptedException {
+    TableResult tableResult = BigQueryHelper.getQueriesFromIS(projectId, timeoutInSecs, startTime, endTime,
+            Optional.ofNullable(ISTable).orElse(IS_TABLE_DEFAULT));
     fieldValueListIterator = tableResult.iterateAll().iterator();
   }
 
